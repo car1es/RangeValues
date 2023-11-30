@@ -1,19 +1,21 @@
 package ru.netology;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Main {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
 
-    public static void main(String[] args) throws InterruptedException {
-        String[] texts = new String[25];
+        String[] texts = new String[5];
         for (int i = 0; i < texts.length; i++) {
             texts[i] = generateText("aab", 30_000);
         }
 
         long startTs = System.currentTimeMillis(); // start time
-        List<Thread> threads = new ArrayList<>();
+        final ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        List<Future<Integer>> futureList = new ArrayList<>();
         for (String text : texts) {
-            Runnable runnable = () -> {
+            Callable<Integer> callable = () -> {
                 int maxSize = 0;
                 for (int i = 0; i < text.length(); i++) {
                     for (int j = 0; j < text.length(); j++) {
@@ -33,16 +35,18 @@ public class Main {
                     }
                 }
                 System.out.println(text.substring(0, 100) + " -> " + maxSize);
+                return maxSize;
             };
-            Thread thread = new Thread(runnable);
-            threads.add(thread);
-            thread.start();
+            futureList.add(threadPool.submit(callable));
         }
-        for (Thread thread : threads) {
-            thread.join(); // зависаем, ждём когда поток объект которого лежит в thread завершится
+        int result = 0, max = 0;
+        for (Future<Integer> future : futureList) {
+            result = future.get();
+            if (max < result) max = result;
         }
         long endTs = System.currentTimeMillis(); // end time
-
+        System.out.println(result);
+        threadPool.shutdown();
         System.out.println("Time: " + (endTs - startTs) + "ms");
     }
 
